@@ -1,13 +1,45 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-br">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>vanillajs</title>
+    <title>Kanban de Tarefas</title>
+    <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.js"></script>
+    <header class="cabecalho">
+      <h1>Meu Kanban</h1>
+    </header>
+
+    <!-- Formulário de criação de tarefas -->
+    <form id="form-tarefa" class="form-tarefa">
+      <input
+        type="text"
+        id="input-titulo"
+        placeholder="Digite o título da tarefa..."
+        required
+      />
+      <button type="submit">Adicionar</button>
+    </form>
+
+    <!-- Quadro com as 3 colunas -->
+    <main class="quadro">
+      <section class="coluna" data-coluna="a-fazer">
+        <h2>A Fazer</h2>
+        <div class="lista-cards" id="lista-a-fazer" data-coluna="a-fazer"></div>
+      </section>
+
+      <section class="coluna" data-coluna="em-progresso">
+        <h2>Em Progresso</h2>
+        <div class="lista-cards" id="lista-em-progresso" data-coluna="em-progresso"></div>
+      </section>
+
+      <section class="coluna" data-coluna="concluido">
+        <h2>Concluído</h2>
+        <div class="lista-cards" id="lista-concluido" data-coluna="concluido"></div>
+      </section>
+    </main>
+
+    <script type="module" src="/main.js"></script>
   </body>
 </html>
