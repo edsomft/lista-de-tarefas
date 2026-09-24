@@ -1,75 +1,190 @@
-import { criarTarefa, deletarTarefa, moverTarefa } from "./data.js";
-import { renderizarQuadro } from "./dom.js";
+// eventos.js — todos os addEventListener da aplicação.
+// Padrão de cada evento: (1) altera o estado via data.js  →  (2) chama atualizarInterface().
 
-function configurarFormulario() {
-  const form = document.getElementById("form-tarefa");
-  const input = document.getElementById("input-titulo");
+import {
+  estado,
+  filtrosPadrao,
+  buscarTarefa,
+  criarTarefa,
+  atualizarTarefa,
+  removerTarefa,
+  moverTarefa,
+  statusVizinho,
+  validarTarefa,
+} from "./data.js";
+import {
+  atualizarInterface,
+  sincronizarFiltros,
+  abrirModal,
+  fecharModal,
+  lerFormulario,
+  mostrarErroFormulario,
+} from "./dom.js";
 
-  form.addEventListener("submit", (evento) => {
-    evento.preventDefault(); // impede o navegador de recarregar a página
+export function registrarEventos() {
+  registrarEventosFiltros();
+  registrarEventosQuadro();
+  registrarEventosModal();
+  registrarEventosArrastar();
+}
 
-    const titulo = input.value.trim();
-    if (titulo === "") return; // proteção extra, além do "required" do HTML
+/* ------------------------------------------------------------------ */
+/* Busca e filtros                                                     */
+/* ------------------------------------------------------------------ */
 
-    criarTarefa(titulo);   // altera o array (Create)
-    renderizarQuadro();    // redesenha a tela com o novo estado
-    input.value = "";      // limpa o campo pra próxima tarefa
-    input.focus();         // devolve o foco no input
+function registrarEventosFiltros() {
+  // Busca: dispara a cada letra digitada.
+  document.querySelector("#filtro-busca").addEventListener("input", (evento) => {
+    estado.filtros.busca = evento.target.value;
+    atualizarInterface();
+  });
+
+  // Selects: cada um grava o valor escolhido em uma chave de estado.filtros.
+  const selects = [
+    ["#filtro-categoria", "categoriaId"],
+    ["#filtro-prioridade", "prioridade"],
+    ["#filtro-tag", "tagId"],
+    ["#filtro-ordem", "ordem"],
+  ];
+  selects.forEach(([seletor, chave]) => {
+    document.querySelector(seletor).addEventListener("change", (evento) => {
+      estado.filtros[chave] = evento.target.value;
+      atualizarInterface();
+    });
+  });
+
+  document.querySelector("#btn-limpar").addEventListener("click", () => {
+    Object.assign(estado.filtros, filtrosPadrao);
+    sincronizarFiltros();
+    atualizarInterface();
   });
 }
 
-function configurarCliquesNoQuadro() {
-  const quadro = document.querySelector(".quadro");
+/* ------------------------------------------------------------------ */
+/* Botões dos cartões (delegação de eventos)                           */
+/* ------------------------------------------------------------------ */
 
-  // Delegação de eventos: um único listener no container pai,
-  // que funciona mesmo para cards criados dinamicamente depois
-  quadro.addEventListener("click", (evento) => {
-    const botao = evento.target.closest(".botao-remover");
-    if (!botao) return; // clicou em outro lugar do quadro, ignora
+// Os cartões são recriados a cada renderização. Por isso o listener fica no
+// #quadro (que nunca é recriado) e descobrimos qual botão foi clicado com closest().
+function registrarEventosQuadro() {
+  document.querySelector("#btn-nova").addEventListener("click", () => abrirModal());
 
-    const id = Number(botao.dataset.id); // dataset retorna string, convertemos pra número
-    deletarTarefa(id);
-    renderizarQuadro();
+  document.querySelector("#quadro").addEventListener("click", (evento) => {
+    const botao = evento.target.closest("[data-acao]");
+    if (!botao) return;
+
+    const id = Number(botao.closest(".cartao").dataset.id);
+    const tarefa = buscarTarefa(id);
+    if (!tarefa) return;
+
+    switch (botao.dataset.acao) {
+      case "editar":
+        abrirModal(tarefa);
+        break;
+
+      case "excluir":
+        if (confirm(`Excluir a tarefa "${tarefa.titulo}"?`)) {
+          removerTarefa(id);
+          atualizarInterface();
+        }
+        break;
+
+      case "mover-anterior":
+      case "mover-proximo": {
+        const direcao = botao.dataset.acao === "mover-proximo" ? 1 : -1;
+        const novoStatus = statusVizinho(tarefa.status, direcao);
+        if (novoStatus) {
+          moverTarefa(id, novoStatus);
+          atualizarInterface();
+        }
+        break;
+      }
+    }
   });
 }
 
-function configurarDragAndDrop() {
-  const quadro = document.querySelector(".quadro");
+/* ------------------------------------------------------------------ */
+/* Modal: salvar (criar ou editar) e fechar                            */
+/* ------------------------------------------------------------------ */
 
-  // 1) Início do arraste: guarda o id do card sendo arrastado
+function registrarEventosModal() {
+  const modal = document.querySelector("#modal-tarefa");
+  const formulario = document.querySelector("#form-tarefa");
+
+  formulario.addEventListener("submit", (evento) => {
+    evento.preventDefault(); // não deixa a página recarregar
+
+    const { id, ...campos } = lerFormulario();
+    const erro = validarTarefa(campos);
+    if (erro) {
+      mostrarErroFormulario(erro);
+      return;
+    }
+
+    if (id) {
+      atualizarTarefa(id, campos); // já existe → editar
+    } else {
+      criarTarefa(campos); // não tem id → cadastrar
+    }
+
+    fecharModal();
+    atualizarInterface();
+  });
+
+  document.querySelector("#btn-cancelar").addEventListener("click", fecharModal);
+
+  // Clicar fora da janela (no fundo escuro) também fecha.
+  modal.addEventListener("click", (evento) => {
+    if (evento.target === modal) fecharModal();
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Arrastar e soltar entre colunas                                     */
+/* ------------------------------------------------------------------ */
+
+function registrarEventosArrastar() {
+  const quadro = document.querySelector("#quadro");
+
   quadro.addEventListener("dragstart", (evento) => {
-    const card = evento.target.closest(".card");
-    if (!card) return;
-    evento.dataTransfer.setData("text/plain", card.dataset.id);
+    const cartao = evento.target.closest(".cartao");
+    if (!cartao) return;
+    evento.dataTransfer.setData("text/plain", cartao.dataset.id);
+    evento.dataTransfer.effectAllowed = "move";
+    cartao.classList.add("arrastando");
   });
 
-  document.querySelectorAll(".lista-cards").forEach((lista) => {
-    // 2) Passando por cima de uma coluna: precisa liberar o drop
-    lista.addEventListener("dragover", (evento) => {
-      evento.preventDefault(); // essencial, sem isso o "drop" nunca dispara
-      lista.closest(".coluna").classList.add("arrastando-sobre");
-    });
-
-    lista.addEventListener("dragleave", () => {
-      lista.closest(".coluna").classList.remove("arrastando-sobre");
-    });
-
-    // 3) Soltou o card: aqui acontece o Update (mudança de coluna)
-    lista.addEventListener("drop", (evento) => {
-      evento.preventDefault();
-      lista.closest(".coluna").classList.remove("arrastando-sobre");
-
-      const id = Number(evento.dataTransfer.getData("text/plain"));
-      const novaColuna = lista.dataset.coluna;
-
-      moverTarefa(id, novaColuna);
-      renderizarQuadro();
-    });
+  quadro.addEventListener("dragend", (evento) => {
+    const cartao = evento.target.closest(".cartao");
+    if (cartao) cartao.classList.remove("arrastando");
   });
-}
 
-export function configurarEventos() {
-  configurarFormulario();
-  configurarCliquesNoQuadro();
-  configurarDragAndDrop();
+  // Sem preventDefault() no dragover, o navegador não permite soltar (drop).
+  quadro.addEventListener("dragover", (evento) => {
+    const coluna = evento.target.closest(".coluna");
+    if (!coluna) return;
+    evento.preventDefault();
+    coluna.classList.add("alvo");
+  });
+
+  quadro.addEventListener("dragleave", (evento) => {
+    const coluna = evento.target.closest(".coluna");
+    if (coluna && !coluna.contains(evento.relatedTarget)) {
+      coluna.classList.remove("alvo");
+    }
+  });
+
+  quadro.addEventListener("drop", (evento) => {
+    const coluna = evento.target.closest(".coluna");
+    if (!coluna) return;
+    evento.preventDefault();
+    coluna.classList.remove("alvo");
+
+    const id = Number(evento.dataTransfer.getData("text/plain"));
+    const tarefa = buscarTarefa(id);
+    if (tarefa && tarefa.status !== coluna.dataset.status) {
+      moverTarefa(id, coluna.dataset.status);
+      atualizarInterface();
+    }
+  });
 }

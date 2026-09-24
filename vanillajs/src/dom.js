@@ -1,43 +1,456 @@
-import { listarTarefas, COLUNAS } from "./data.js";
+// dom.js — tudo que cria, altera ou remove elementos da tela.
+// Este arquivo lê o estado (data.js), mas não decide regras: quem reage aos cliques é o eventos.js.
 
-const IDS_CONTAINERS = {
-  [COLUNAS.A_FAZER]: "lista-a-fazer",
-  [COLUNAS.EM_PROGRESSO]: "lista-em-progresso",
-  [COLUNAS.CONCLUIDO]: "lista-concluido",
-};
+import {
+  estado,
+  colunas,
+  categorias,
+  tags,
+  prioridades,
+  ordens,
+  carregarTarefas,
+  obterTarefasVisiveis,
+  existemFiltrosAtivos,
+  buscarCategoria,
+  buscarTag,
+  buscarPrioridade,
+  statusVizinho,
+  contarPorStatus,
+  contarPorCategoria,
+  calcularProgresso,
+} from "./data.js";
 
-function criarElementoCard(tarefa) {
-  const card = document.createElement("div");
-  card.className = "card";
-  card.draggable = true;
-  card.dataset.id = tarefa.id;
+/* ------------------------------------------------------------------ */
+/* Helpers para criar elementos                                        */
+/* ------------------------------------------------------------------ */
 
-  const titulo = document.createElement("span");
-  titulo.textContent = tarefa.titulo;
+// criarElemento("button", { classe: "botao", texto: "Salvar", dataset: { acao: "x" } }, [filhos])
+// - classe   -> className
+// - texto    -> textContent (seguro: não interpreta HTML)
+// - dataset  -> atributos data-*
+// - o resto  -> vira atributo normal (id, type, name, ...)
+export function criarElemento(tag, propriedades = {}, filhos = []) {
+  const elemento = document.createElement(tag);
+  const { classe, texto, dataset, ...atributos } = propriedades;
 
-  const botaoRemover = document.createElement("button");
-  botaoRemover.textContent = "✕";
-  botaoRemover.className = "botao-remover";
-  botaoRemover.dataset.id = tarefa.id;
+  if (classe) elemento.className = classe;
+  if (texto !== undefined) elemento.textContent = texto;
+  if (dataset) Object.assign(elemento.dataset, dataset);
+  for (const [nome, valor] of Object.entries(atributos)) {
+    elemento.setAttribute(nome, valor);
+  }
 
-  card.appendChild(titulo);
-  card.appendChild(botaoRemover);
-
-  return card;
+  elemento.append(...filhos);
+  return elemento;
 }
 
+// opcoes = [[valor, texto], [valor, texto], ...]
+function criarSelect(atributos, opcoes) {
+  const select = criarElemento("select", atributos);
+  opcoes.forEach(([valor, texto]) => {
+    select.append(criarElemento("option", { value: String(valor), texto }));
+  });
+  return select;
+}
+
+// <label> que envolve o texto e o controle (assim clicar no texto foca o campo)
+function criarCampo(rotulo, controle) {
+  return criarElemento("label", { classe: "campo" }, [
+    criarElemento("span", { texto: rotulo }),
+    controle,
+  ]);
+}
+
+/* ------------------------------------------------------------------ */
+/* Estrutura da página (montada uma única vez)                         */
+/* ------------------------------------------------------------------ */
+
+function criarCabecalho() {
+  return criarElemento("header", { classe: "topo" }, [
+    criarElemento("div", {}, [
+      criarElemento("h1", { texto: "Quadro de tarefas" }),
+      criarElemento("p", {
+        classe: "subtitulo",
+        texto: "O que falta fazer, o que está em andamento e o que já terminou.",
+      }),
+    ]),
+    criarElemento("div", { classe: "progresso" }, [
+      criarElemento("p", { id: "progresso-texto" }),
+      criarElemento("progress", { id: "progresso-barra", max: "100", value: "0" }),
+    ]),
+    criarElemento("button", {
+      id: "btn-nova",
+      classe: "botao botao-primario",
+      type: "button",
+      texto: "Nova tarefa",
+    }),
+  ]);
+}
+
+function criarBarraFerramentas() {
+  const busca = criarElemento("input", {
+    id: "filtro-busca",
+    type: "search",
+    placeholder: "Título ou descrição",
+    autocomplete: "off",
+  });
+
+  const categoria = criarSelect({ id: "filtro-categoria" }, [
+    ["todas", "Todas"],
+    ...categorias.map((c) => [c.id, c.nome]),
+  ]);
+  const prioridade = criarSelect({ id: "filtro-prioridade" }, [
+    ["todas", "Todas"],
+    ...prioridades.map((p) => [p.id, p.titulo]),
+  ]);
+  const tag = criarSelect({ id: "filtro-tag" }, [
+    ["todas", "Todas"],
+    ...tags.map((t) => [t.id, t.nome]),
+  ]);
+  const ordem = criarSelect(
+    { id: "filtro-ordem" },
+    ordens.map((o) => [o.id, o.titulo])
+  );
+
+  return criarElemento("section", { classe: "ferramentas", "aria-label": "Busca e filtros" }, [
+    criarCampo("Buscar", busca),
+    criarCampo("Categoria", categoria),
+    criarCampo("Prioridade", prioridade),
+    criarCampo("Tag", tag),
+    criarCampo("Ordenar por", ordem),
+    criarElemento("button", {
+      id: "btn-limpar",
+      classe: "botao",
+      type: "button",
+      texto: "Limpar filtros",
+    }),
+  ]);
+}
+
+function criarResumoCategorias() {
+  return criarElemento("section", { classe: "resumo" }, [
+    criarElemento("p", { classe: "resumo-rotulo", texto: "Tarefas por categoria" }),
+    criarElemento("ul", { id: "resumo-categorias", classe: "resumo-lista" }),
+  ]);
+}
+
+function criarQuadro() {
+  const quadro = criarElemento("main", { id: "quadro", classe: "quadro" });
+
+  colunas.forEach((coluna) => {
+    quadro.append(
+      criarElemento("section", { classe: "coluna", dataset: { status: coluna.id } }, [
+        criarElemento("header", { classe: "coluna-topo" }, [
+          criarElemento("h2", { texto: coluna.titulo }),
+          criarElemento("span", { classe: "contador", texto: "0" }),
+        ]),
+        criarElemento("div", { classe: "coluna-lista" }),
+      ])
+    );
+  });
+
+  return quadro;
+}
+
+// Janela (<dialog>) usada tanto para criar quanto para editar.
+function criarModal() {
+  const grupoTags = criarElemento("fieldset", { classe: "grupo-tags" }, [
+    criarElemento("legend", { texto: "Tags" }),
+    ...tags.map((tag) =>
+      criarElemento("label", { classe: "opcao-tag" }, [
+        criarElemento("input", { type: "checkbox", name: "tagIds", value: String(tag.id) }),
+        criarElemento("span", { texto: tag.nome }),
+      ])
+    ),
+  ]);
+
+  const formulario = criarElemento("form", { id: "form-tarefa", novalidate: "" }, [
+    criarElemento("h2", { id: "modal-titulo" }),
+    criarElemento("input", { type: "hidden", name: "tarefaId" }),
+    criarCampo(
+      "Título",
+      criarElemento("input", { type: "text", name: "titulo", maxlength: "60", autocomplete: "off" })
+    ),
+    criarCampo(
+      "Descrição",
+      criarElemento("textarea", { name: "descricao", rows: "3", maxlength: "200" })
+    ),
+    criarElemento("div", { classe: "linha" }, [
+      criarCampo(
+        "Categoria",
+        criarSelect(
+          { name: "categoriaId" },
+          categorias.map((c) => [c.id, c.nome])
+        )
+      ),
+      criarCampo(
+        "Prioridade",
+        criarSelect(
+          { name: "prioridade" },
+          prioridades.map((p) => [p.id, p.titulo])
+        )
+      ),
+      criarCampo(
+        "Status",
+        criarSelect(
+          { name: "status" },
+          colunas.map((c) => [c.id, c.titulo])
+        )
+      ),
+    ]),
+    grupoTags,
+    criarCampo(
+      "Imagem (link)",
+      criarElemento("input", {
+        type: "url",
+        name: "imagem",
+        placeholder: "https://... (vazio usa uma imagem automática)",
+        autocomplete: "off",
+      })
+    ),
+    criarElemento("p", { id: "form-erro", classe: "erro", role: "alert", hidden: "" }),
+    criarElemento("div", { classe: "modal-acoes" }, [
+      criarElemento("button", {
+        id: "btn-cancelar",
+        classe: "botao",
+        type: "button",
+        texto: "Cancelar",
+      }),
+      criarElemento("button", {
+        classe: "botao botao-primario",
+        type: "submit",
+        texto: "Salvar tarefa",
+      }),
+    ]),
+  ]);
+
+  return criarElemento("dialog", { id: "modal-tarefa", "aria-labelledby": "modal-titulo" }, [
+    formulario,
+  ]);
+}
+
+/* ------------------------------------------------------------------ */
+/* Cartões e colunas                                                   */
+/* ------------------------------------------------------------------ */
+
+function criarCartao(tarefa) {
+  const categoria = buscarCategoria(tarefa.categoriaId);
+  const prioridade = buscarPrioridade(tarefa.prioridade);
+  const anterior = statusVizinho(tarefa.status, -1);
+  const proximo = statusVizinho(tarefa.status, 1);
+
+  // Imagem: se o link estiver quebrado, a classe "quebrada" esconde o <img>
+  // e sobra só a cor da categoria como fundo.
+  const imagem = criarElemento("img", {
+    src: tarefa.imagem,
+    alt: "",
+    loading: "lazy",
+    draggable: "false",
+  });
+  imagem.addEventListener("error", () => imagem.classList.add("quebrada"));
+
+  const nomesDasTags = tarefa.tagIds.map(buscarTag).filter(Boolean);
+
+  const corpo = [
+    criarElemento("div", { classe: "cartao-meta" }, [
+      criarElemento("span", { classe: "chip-categoria", texto: categoria ? categoria.nome : "Sem categoria" }),
+      criarElemento("span", { classe: "pilula-prioridade", texto: `Prioridade ${prioridade.titulo.toLowerCase()}` }),
+    ]),
+    criarElemento("h3", { texto: tarefa.titulo }),
+  ];
+  if (tarefa.descricao) corpo.push(criarElemento("p", { classe: "descricao", texto: tarefa.descricao }));
+  if (nomesDasTags.length > 0) {
+    corpo.push(
+      criarElemento(
+        "ul",
+        { classe: "tags" },
+        nomesDasTags.map((tag) => criarElemento("li", { texto: `#${tag.nome}` }))
+      )
+    );
+  }
+
+  const criarBotao = (acao, texto, classeExtra = "") =>
+    criarElemento("button", {
+      type: "button",
+      classe: `botao-pequeno ${classeExtra}`.trim(),
+      texto,
+      dataset: { acao },
+    });
+
+  const botaoVoltar = criarBotao("mover-anterior", "Voltar");
+  const botaoAvancar = criarBotao("mover-proximo", "Avançar");
+  botaoVoltar.disabled = anterior === null;
+  botaoAvancar.disabled = proximo === null;
+
+  return criarElemento(
+    "article",
+    {
+      classe: `cartao prioridade-${tarefa.prioridade}`,
+      draggable: "true",
+      dataset: { id: tarefa.id },
+      style: `--cor: ${categoria ? categoria.cor : "#64748b"}`,
+    },
+    [
+      criarElemento("div", { classe: "cartao-imagem" }, [imagem]),
+      criarElemento("div", { classe: "cartao-corpo" }, corpo),
+      criarElemento("footer", { classe: "cartao-acoes" }, [
+        criarElemento("div", { classe: "grupo-acoes" }, [botaoVoltar, botaoAvancar]),
+        criarElemento("div", { classe: "grupo-acoes" }, [
+          criarBotao("editar", "Editar"),
+          criarBotao("excluir", "Excluir", "perigo"),
+        ]),
+      ]),
+    ]
+  );
+}
+
+function criarMensagemVazia() {
+  const texto = existemFiltrosAtivos()
+    ? "Nenhuma tarefa corresponde aos filtros."
+    : "Nada por aqui ainda. Arraste um cartão para cá ou crie uma tarefa.";
+  return criarElemento("p", { classe: "vazio", texto });
+}
+
+export function renderizarColunas() {
+  const visiveis = obterTarefasVisiveis();
+  const contagem = contarPorStatus(visiveis);
+
+  document.querySelectorAll(".coluna").forEach((secao) => {
+    const status = secao.dataset.status;
+    const tarefasDaColuna = visiveis.filter((t) => t.status === status);
+
+    secao.querySelector(".contador").textContent = contagem[status];
+
+    const lista = secao.querySelector(".coluna-lista");
+    if (tarefasDaColuna.length === 0) {
+      lista.replaceChildren(criarMensagemVazia());
+    } else {
+      lista.replaceChildren(...tarefasDaColuna.map(criarCartao));
+    }
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Contadores e progresso                                              */
+/* ------------------------------------------------------------------ */
+
+function renderizarProgresso() {
+  const { total, concluidas, percentual } = calcularProgresso();
+  document.querySelector("#progresso-texto").textContent =
+    total === 0
+      ? "Nenhuma tarefa cadastrada."
+      : `${concluidas} de ${total} concluídas (${percentual}%)`;
+  document.querySelector("#progresso-barra").value = percentual;
+}
+
+function renderizarResumoCategorias() {
+  const itens = contarPorCategoria().map(({ categoria, total }) =>
+    criarElemento("li", { classe: "chip-resumo", style: `--cor: ${categoria.cor}` }, [
+      criarElemento("span", { classe: "ponto" }),
+      criarElemento("span", { texto: `${categoria.nome}: ${total}` }),
+    ])
+  );
+  document.querySelector("#resumo-categorias").replaceChildren(...itens);
+}
+
+// Redesenha tudo que depende dos dados. Chamada depois de QUALQUER alteração.
+export function atualizarInterface() {
+  renderizarColunas();
+  renderizarProgresso();
+  renderizarResumoCategorias();
+}
+
+// Faz os campos de filtro mostrarem o que está no estado (usado no "Limpar filtros").
+export function sincronizarFiltros() {
+  const f = estado.filtros;
+  document.querySelector("#filtro-busca").value = f.busca;
+  document.querySelector("#filtro-categoria").value = f.categoriaId;
+  document.querySelector("#filtro-prioridade").value = f.prioridade;
+  document.querySelector("#filtro-tag").value = f.tagId;
+  document.querySelector("#filtro-ordem").value = f.ordem;
+}
+
+/* ------------------------------------------------------------------ */
+/* Modal (criar / editar)                                              */
+/* ------------------------------------------------------------------ */
+
+export function abrirModal(tarefa = null) {
+  const form = document.querySelector("#form-tarefa");
+  form.reset();
+  esconderErroFormulario();
+
+  document.querySelector("#modal-titulo").textContent = tarefa ? "Editar tarefa" : "Nova tarefa";
+  form.elements.tarefaId.value = tarefa ? tarefa.id : "";
+
+  if (tarefa) {
+    form.elements.titulo.value = tarefa.titulo;
+    form.elements.descricao.value = tarefa.descricao;
+    form.elements.categoriaId.value = tarefa.categoriaId;
+    form.elements.prioridade.value = tarefa.prioridade;
+    form.elements.status.value = tarefa.status;
+    form.elements.imagem.value = tarefa.imagem;
+    form.querySelectorAll('input[name="tagIds"]').forEach((caixa) => {
+      caixa.checked = tarefa.tagIds.includes(Number(caixa.value));
+    });
+  } else {
+    form.elements.prioridade.value = "media";
+    form.elements.status.value = "a-fazer";
+  }
+
+  document.querySelector("#modal-tarefa").showModal();
+  form.elements.titulo.focus();
+}
+
+export function fecharModal() {
+  document.querySelector("#modal-tarefa").close();
+}
+
+// Lê o formulário e devolve um objeto com os tipos certos (números como number).
+export function lerFormulario() {
+  const dados = new FormData(document.querySelector("#form-tarefa"));
+  const id = dados.get("tarefaId");
+
+  return {
+    id: id ? Number(id) : null,
+    titulo: dados.get("titulo"),
+    descricao: dados.get("descricao"),
+    categoriaId: Number(dados.get("categoriaId")),
+    prioridade: dados.get("prioridade"),
+    status: dados.get("status"),
+    tagIds: dados.getAll("tagIds").map(Number),
+    imagem: dados.get("imagem"),
+  };
+}
+
+export function mostrarErroFormulario(mensagem) {
+  const erro = document.querySelector("#form-erro");
+  erro.textContent = mensagem;
+  erro.hidden = false;
+}
+
+function esconderErroFormulario() {
+  const erro = document.querySelector("#form-erro");
+  erro.textContent = "";
+  erro.hidden = true;
+}
+
+/* ------------------------------------------------------------------ */
+/* Ponto de entrada                                                    */
+/* ------------------------------------------------------------------ */
+
 export function renderizarQuadro() {
-  const tarefas = listarTarefas();
+  carregarTarefas();
 
-  Object.values(IDS_CONTAINERS).forEach((idContainer) => {
-    const container = document.getElementById(idContainer);
-    container.innerHTML = "";
-  });
+  document
+    .querySelector("#app")
+    .replaceChildren(
+      criarCabecalho(),
+      criarBarraFerramentas(),
+      criarResumoCategorias(),
+      criarQuadro(),
+      criarModal()
+    );
 
-  tarefas.forEach((tarefa) => {
-    const idContainer = IDS_CONTAINERS[tarefa.coluna];
-    const container = document.getElementById(idContainer);
-    const card = criarElementoCard(tarefa);
-    container.appendChild(card);
-  });
+  sincronizarFiltros();
+  atualizarInterface();
 }
