@@ -455,28 +455,84 @@ dialog::backdrop {
   gap: 12px;
 }
 
-.grupo-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-  margin: 0;
-  padding: 6px 12px 12px;
-  border: 1px solid var(--borda);
-  border-radius: 6px;
+/* Menu suspenso de tags */
+
+.campo-menu {
+  display: grid;
+  gap: 4px;
 }
 
-.grupo-tags legend {
-  padding: 0 4px;
+.rotulo-campo {
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--tinta-suave);
 }
 
-.opcao-tag {
+.menu-tags {
+  border: 1px solid var(--borda);
+  border-radius: 6px;
+  background: #fff;
+}
+
+.menu-tags summary {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.92rem;
+  justify-content: space-between;
+  padding: 8px 10px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.menu-tags summary::-webkit-details-marker {
+  display: none;
+}
+
+.menu-tags summary::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border: solid var(--tinta-suave);
+  border-width: 0 2px 2px 0;
+  transform: translateY(-2px) rotate(45deg);
+}
+
+.menu-tags[open] summary::after {
+  transform: translateY(2px) rotate(-135deg);
+}
+
+.menu-tags-painel {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border-top: 1px solid var(--borda);
+}
+
+.lista-tags-menu {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 6px 12px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.nova-tag {
+  display: flex;
+  gap: 8px;
+}
+
+.nova-tag input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  padding: 6px 10px;
+  border: 1px solid var(--borda);
+  border-radius: 6px;
+}
+
+.msg-tag {
+  min-height: 1.2em;
+  font-size: 0.85rem;
+  color: var(--tinta-suave);
 }
 
 .erro {
@@ -520,4 +576,44 @@ dialog::backdrop {
   * {
     transition: none !important;
   }
+}
+
+.opcao-tag {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.opcao-tag label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.92rem;
+  min-width: 0;
+}
+
+.opcao-tag label span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.botao-excluir-tag {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  line-height: 1;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--tinta-suave);
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.botao-excluir-tag:hover {
+  background: color-mix(in srgb, var(--perigo) 12%, white);
+  color: var(--perigo);
 }

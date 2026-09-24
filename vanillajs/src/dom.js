@@ -5,10 +5,10 @@ import {
   estado,
   colunas,
   categorias,
-  tags,
   prioridades,
   ordens,
   carregarTarefas,
+  carregarTags,
   obterTarefasVisiveis,
   existemFiltrosAtivos,
   buscarCategoria,
@@ -45,11 +45,13 @@ export function criarElemento(tag, propriedades = {}, filhos = []) {
 }
 
 // opcoes = [[valor, texto], [valor, texto], ...]
+function criarOpcao(valor, texto) {
+  return criarElemento("option", { value: String(valor), texto });
+}
+
 function criarSelect(atributos, opcoes) {
   const select = criarElemento("select", atributos);
-  opcoes.forEach(([valor, texto]) => {
-    select.append(criarElemento("option", { value: String(valor), texto }));
-  });
+  opcoes.forEach(([valor, texto]) => select.append(criarOpcao(valor, texto)));
   return select;
 }
 
@@ -103,10 +105,8 @@ function criarBarraFerramentas() {
     ["todas", "Todas"],
     ...prioridades.map((p) => [p.id, p.titulo]),
   ]);
-  const tag = criarSelect({ id: "filtro-tag" }, [
-    ["todas", "Todas"],
-    ...tags.map((t) => [t.id, t.nome]),
-  ]);
+  // As tags entram depois, em renderizarFiltroTags() (a lista pode crescer).
+  const tag = criarSelect({ id: "filtro-tag" }, [["todas", "Todas"]]);
   const ordem = criarSelect(
     { id: "filtro-ordem" },
     ordens.map((o) => [o.id, o.titulo])
@@ -154,14 +154,35 @@ function criarQuadro() {
 
 // Janela (<dialog>) usada tanto para criar quanto para editar.
 function criarModal() {
-  const grupoTags = criarElemento("fieldset", { classe: "grupo-tags" }, [
-    criarElemento("legend", { texto: "Tags" }),
-    ...tags.map((tag) =>
-      criarElemento("label", { classe: "opcao-tag" }, [
-        criarElemento("input", { type: "checkbox", name: "tagIds", value: String(tag.id) }),
-        criarElemento("span", { texto: tag.nome }),
-      ])
-    ),
+  // Menu suspenso de tags: <details> abre e fecha sozinho (sem JavaScript).
+  // Dentro dele: a lista de tags (checkboxes) e um campo para criar uma tag nova.
+  const grupoTags = criarElemento("div", { classe: "campo-menu" }, [
+    criarElemento("span", { classe: "rotulo-campo", texto: "Tags" }),
+    criarElemento("details", { id: "menu-tags", classe: "menu-tags" }, [
+      criarElemento("summary", {}, [
+        criarElemento("span", { id: "resumo-tags", texto: "Selecionar tags" }),
+      ]),
+      criarElemento("div", { classe: "menu-tags-painel" }, [
+        criarElemento("div", { id: "lista-tags-menu", classe: "lista-tags-menu" }),
+        criarElemento("div", { classe: "nova-tag" }, [
+          criarElemento("input", {
+            id: "nova-tag",
+            type: "text",
+            maxlength: "20",
+            placeholder: "Nova tag",
+            autocomplete: "off",
+            "aria-label": "Nome da nova tag",
+          }),
+          criarElemento("button", {
+            id: "btn-criar-tag",
+            classe: "botao-pequeno",
+            type: "button",
+            texto: "Adicionar",
+          }),
+        ]),
+        criarElemento("p", { id: "msg-tag", classe: "msg-tag", role: "status" }),
+      ]),
+    ]),
   ]);
 
   const formulario = criarElemento("form", { id: "form-tarefa", novalidate: "" }, [
@@ -371,6 +392,69 @@ export function sincronizarFiltros() {
 }
 
 /* ------------------------------------------------------------------ */
+/* Tags (filtro e menu suspenso do formulário)                         */
+/* ------------------------------------------------------------------ */
+
+// Refaz as opções do filtro de tags (chamada no início e quando nasce uma tag nova).
+export function renderizarFiltroTags() {
+  const select = document.querySelector("#filtro-tag");
+  select.replaceChildren(
+    criarOpcao("todas", "Todas"),
+    ...estado.tags.map((tag) => criarOpcao(tag.id, tag.nome))
+  );
+  select.value = estado.filtros.tagId; // mantém a escolha atual
+}
+
+// Refaz a lista de checkboxes do formulário, preservando o que já estava marcado.
+export function renderizarTagsNoModal() {
+  const lista = document.querySelector("#lista-tags-menu");
+  const marcadas = new Set(
+    [...lista.querySelectorAll("input:checked")].map((caixa) => Number(caixa.value))
+  );
+
+  lista.replaceChildren(
+    ...estado.tags.map((tag) => {
+      const caixa = criarElemento("input", {
+        type: "checkbox",
+        name: "tagIds",
+        value: String(tag.id),
+      });
+      caixa.checked = marcadas.has(tag.id);
+      return criarElemento("div", { classe: "opcao-tag" }, [
+        criarElemento("label", {}, [caixa, criarElemento("span", { texto: tag.nome })]),
+        criarElemento("button", {
+          type: "button",
+          classe: "botao-excluir-tag",
+          "aria-label": `Excluir tag ${tag.nome}`,
+          texto: "×",
+          dataset: { tagId: tag.id },
+        }),
+      ]);
+    })
+  );
+  atualizarResumoTags();
+}
+
+// Texto do "botão" do menu: quantas tags estão marcadas.
+export function atualizarResumoTags() {
+  const quantidade = document.querySelectorAll("#lista-tags-menu input:checked").length;
+  const resumo = document.querySelector("#resumo-tags");
+  if (quantidade === 0) resumo.textContent = "Selecionar tags";
+  else if (quantidade === 1) resumo.textContent = "1 tag selecionada";
+  else resumo.textContent = `${quantidade} tags selecionadas`;
+}
+
+export function marcarTagNoModal(id) {
+  const caixa = document.querySelector(`#lista-tags-menu input[value="${id}"]`);
+  if (caixa) caixa.checked = true;
+  atualizarResumoTags();
+}
+
+export function mostrarMensagemTag(mensagem) {
+  document.querySelector("#msg-tag").textContent = mensagem;
+}
+
+/* ------------------------------------------------------------------ */
 /* Modal (criar / editar)                                              */
 /* ------------------------------------------------------------------ */
 
@@ -396,6 +480,10 @@ export function abrirModal(tarefa = null) {
     form.elements.prioridade.value = "media";
     form.elements.status.value = "a-fazer";
   }
+
+  atualizarResumoTags();
+  document.querySelector("#menu-tags").open = false;
+  mostrarMensagemTag("");
 
   document.querySelector("#modal-tarefa").showModal();
   form.elements.titulo.focus();
@@ -440,6 +528,7 @@ function esconderErroFormulario() {
 
 export function renderizarQuadro() {
   carregarTarefas();
+  carregarTags();
 
   document
     .querySelector("#app")
@@ -451,6 +540,8 @@ export function renderizarQuadro() {
       criarModal()
     );
 
+  renderizarFiltroTags();
+  renderizarTagsNoModal();
   sincronizarFiltros();
   atualizarInterface();
 }

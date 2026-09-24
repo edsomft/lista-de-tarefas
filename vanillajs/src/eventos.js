@@ -5,16 +5,24 @@ import {
   estado,
   filtrosPadrao,
   buscarTarefa,
+  buscarTag,
   criarTarefa,
   atualizarTarefa,
   removerTarefa,
   moverTarefa,
+  criarTag,
+  removerTag,
   statusVizinho,
   validarTarefa,
 } from "./data.js";
 import {
   atualizarInterface,
   sincronizarFiltros,
+  renderizarFiltroTags,
+  renderizarTagsNoModal,
+  atualizarResumoTags,
+  marcarTagNoModal,
+  mostrarMensagemTag,
   abrirModal,
   fecharModal,
   lerFormulario,
@@ -133,9 +141,73 @@ function registrarEventosModal() {
 
   document.querySelector("#btn-cancelar").addEventListener("click", fecharModal);
 
-  // Clicar fora da janela (no fundo escuro) também fecha.
+  const menuTags = document.querySelector("#menu-tags");
+
+  // Clicar fora da janela (no fundo escuro) também fecha;
+  // clicar em qualquer lugar fora do menu de tags fecha só o menu.
   modal.addEventListener("click", (evento) => {
     if (evento.target === modal) fecharModal();
+    if (!menuTags.contains(evento.target)) menuTags.open = false;
+  });
+
+  registrarEventosTags();
+}
+
+/* ------------------------------------------------------------------ */
+/* Tags: marcar e criar direto pelo menu suspenso                      */
+/* ------------------------------------------------------------------ */
+
+function registrarEventosTags() {
+  const listaTags = document.querySelector("#lista-tags-menu");
+
+  // Marcou/desmarcou uma tag: atualiza o texto "2 tags selecionadas".
+  listaTags.addEventListener("change", atualizarResumoTags);
+
+  // Clique no "×" de uma tag: exclui a tag (e remove ela de qualquer tarefa que a usava).
+  listaTags.addEventListener("click", (evento) => {
+    const botao = evento.target.closest(".botao-excluir-tag");
+    if (!botao) return;
+
+    const id = Number(botao.dataset.tagId);
+    const tag = buscarTag(id);
+    if (!tag) return;
+
+    if (confirm(`Excluir a tag "${tag.nome}"? Ela será removida de todas as tarefas.`)) {
+      removerTag(id);
+      renderizarTagsNoModal();
+      renderizarFiltroTags();
+      atualizarInterface();
+      mostrarMensagemTag(`Tag "${tag.nome}" excluída.`);
+    }
+  });
+
+  const campo = document.querySelector("#nova-tag");
+
+  function criarTagDoCampo() {
+    const resultado = criarTag(campo.value);
+    if (resultado.erro) {
+      mostrarMensagemTag(resultado.erro);
+      return;
+    }
+
+    const { tag, criada } = resultado;
+    renderizarTagsNoModal(); // a tag nova aparece na lista (mantendo as marcadas)
+    marcarTagNoModal(tag.id); // e já vem marcada para esta tarefa
+    renderizarFiltroTags(); // e também passa a existir no filtro
+    campo.value = "";
+    mostrarMensagemTag(
+      criada ? `Tag "${tag.nome}" criada.` : `A tag "${tag.nome}" já existia e foi marcada.`
+    );
+  }
+
+  document.querySelector("#btn-criar-tag").addEventListener("click", criarTagDoCampo);
+
+  // Enter dentro do campo criaria a tag; sem o preventDefault ele ENVIARIA o formulário.
+  campo.addEventListener("keydown", (evento) => {
+    if (evento.key === "Enter") {
+      evento.preventDefault();
+      criarTagDoCampo();
+    }
   });
 }
 

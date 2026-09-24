@@ -4,6 +4,7 @@
 import { salvar, carregar } from "./storage.js";
 
 const CHAVE_TAREFAS = "kanban:tarefas";
+const CHAVE_TAGS = "kanban:tags";
 
 /* ------------------------------------------------------------------ */
 /* Tabelas fixas (listas de apoio)                                     */
@@ -33,7 +34,9 @@ export const categorias = [
 
 // Relação N:N — uma tarefa tem VÁRIAS tags (campo tarefa.tagIds, um array de ids)
 // e uma tag pode estar em VÁRIAS tarefas.
-export const tags = [
+// Estas são só as tags iniciais: o usuário pode criar novas (ver criarTag) e elas
+// ficam em estado.tags e no localStorage.
+const tagsIniciais = [
   { id: 1, nome: "urgente" },
   { id: 2, nome: "prova" },
   { id: 3, nome: "código" },
@@ -62,6 +65,7 @@ export const filtrosPadrao = {
 // Único lugar onde os dados "vivem" enquanto a página está aberta.
 export const estado = {
   tarefas: [],
+  tags: [],
   filtros: { ...filtrosPadrao },
 };
 
@@ -185,13 +189,24 @@ export function carregarTarefas() {
   }
 }
 
+// Mesma ideia das tarefas: lê do localStorage ou usa as tags iniciais.
+export function carregarTags() {
+  const salvas = carregar(CHAVE_TAGS, null);
+  if (Array.isArray(salvas)) {
+    estado.tags = salvas;
+  } else {
+    estado.tags = structuredClone(tagsIniciais);
+    salvar(CHAVE_TAGS, estado.tags);
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* Buscas simples (find)                                               */
 /* ------------------------------------------------------------------ */
 
 export const buscarTarefa = (id) => estado.tarefas.find((t) => t.id === id);
 export const buscarCategoria = (id) => categorias.find((c) => c.id === id);
-export const buscarTag = (id) => tags.find((t) => t.id === id);
+export const buscarTag = (id) => estado.tags.find((t) => t.id === id);
 export const buscarPrioridade = (id) => prioridades.find((p) => p.id === id);
 
 /* ------------------------------------------------------------------ */
@@ -229,6 +244,39 @@ export function validarTarefa(dados) {
     }
   }
   return "";
+}
+
+// Padroniza o nome: sem "#", sem espaços sobrando e tudo em minúsculas.
+function normalizarNomeTag(nome) {
+  return nome.trim().replace(/^#+/, "").replace(/\s+/g, " ").toLowerCase();
+}
+
+// Cria uma tag nova. Se já existir uma com o mesmo nome, devolve a existente.
+// Retorno: { erro } ou { tag, criada } (criada = false quando já existia).
+export function criarTag(nome) {
+  const nomeLimpo = normalizarNomeTag(nome);
+  if (nomeLimpo.length < 2) return { erro: "A tag precisa ter pelo menos 2 caracteres." };
+  if (nomeLimpo.length > 20) return { erro: "A tag pode ter no máximo 20 caracteres." };
+
+  const existente = estado.tags.find((t) => t.nome === nomeLimpo);
+  if (existente) return { tag: existente, criada: false };
+
+  const maiorId = estado.tags.reduce((maior, t) => Math.max(maior, t.id), 0);
+  const tag = { id: maiorId + 1, nome: nomeLimpo };
+  estado.tags.push(tag);
+  salvar(CHAVE_TAGS, estado.tags);
+  return { tag, criada: true };
+}
+
+// Remove a tag da lista e também de tagIds de qualquer tarefa que a usava.
+export function removerTag(id) {
+  estado.tags = estado.tags.filter((t) => t.id !== id);
+  salvar(CHAVE_TAGS, estado.tags);
+
+  estado.tarefas.forEach((tarefa) => {
+    tarefa.tagIds = tarefa.tagIds.filter((tagId) => tagId !== id);
+  });
+  persistir();
 }
 
 // CREATE
