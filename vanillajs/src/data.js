@@ -229,21 +229,26 @@ function limparCampos(campos, id) {
   return limpos;
 }
 
-// Devolve uma mensagem de erro (string) ou "" quando os dados estão válidos.
+// Validação campo a campo: devolve um objeto { campo: mensagem } só com os
+// campos que têm problema. Objeto vazio {} significa "pode salvar".
 export function validarTarefa(dados) {
+  const erros = {};
+
   if (dados.titulo.trim().length < 3) {
-    return "Informe um título com pelo menos 3 caracteres.";
+    erros.titulo = "Informe um título com pelo menos 3 caracteres.";
   }
+
   const imagem = dados.imagem.trim();
   if (imagem) {
     try {
       const url = new URL(imagem);
       if (url.protocol !== "http:" && url.protocol !== "https:") throw new Error();
     } catch {
-      return "A imagem precisa ser um link que comece com http:// ou https://.";
+      erros.imagem = "A imagem precisa ser um link que comece com http:// ou https://.";
     }
   }
-  return "";
+
+  return erros;
 }
 
 // Padroniza o nome: sem "#", sem espaços sobrando e tudo em minúsculas.

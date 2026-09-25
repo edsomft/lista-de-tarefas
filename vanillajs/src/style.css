@@ -617,3 +617,156 @@ dialog::backdrop {
   background: color-mix(in srgb, var(--perigo) 12%, white);
   color: var(--perigo);
 }
+
+/* ---------- Validação por campo ---------- */
+
+.erro-campo {
+  min-height: 1.1em;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--perigo);
+}
+
+.campo input.invalido,
+.campo select.invalido,
+.campo textarea.invalido {
+  border-color: var(--perigo);
+  background: color-mix(in srgb, var(--perigo) 6%, white);
+}
+
+/* ---------- Tela de login / criar conta ---------- */
+
+.auth-tela {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.auth-cartao {
+  width: 100%;
+  max-width: 380px;
+  padding: 28px;
+  display: grid;
+  gap: 14px;
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(20, 30, 45, 0.08);
+}
+
+.auth-cartao h1 {
+  font-size: 1.4rem;
+  text-align: center;
+}
+
+.auth-cartao .subtitulo {
+  text-align: center;
+  margin-bottom: 6px;
+}
+
+.form-auth {
+  display: grid;
+  gap: 12px;
+}
+
+.form-auth h2 {
+  font-size: 1.1rem;
+}
+
+.auth-alternar {
+  text-align: center;
+  font-size: 0.88rem;
+  color: var(--tinta-suave);
+}
+
+.botao-link {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 700;
+  color: var(--destaque);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* ---------- Usuário no cabeçalho ---------- */
+
+.usuario-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 4px;
+  border: 1px solid var(--borda);
+  border-radius: 6px;
+  background: var(--superficie);
+  cursor: pointer;
+  font: inherit;
+  color: var(--tinta);
+}
+
+.usuario-info:hover {
+  background: var(--coluna-fundo);
+}
+
+.usuario-nome {
+  font-size: 0.9rem;
+  font-weight: 600;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.avatar-mini,
+.avatar-grande {
+  border-radius: 50%;
+  object-fit: cover;
+  flex: none;
+}
+
+.avatar-mini {
+  width: 28px;
+  height: 28px;
+}
+
+.avatar-grande {
+  width: 72px;
+  height: 72px;
+}
+
+.avatar-letra {
+  display: grid;
+  place-items: center;
+  background: var(--destaque);
+  color: #fff;
+  font-weight: 700;
+}
+
+.avatar-mini.avatar-letra {
+  font-size: 0.85rem;
+}
+
+.avatar-grande.avatar-letra {
+  font-size: 1.6rem;
+}
+
+/* ---------- Modal de perfil ---------- */
+
+#form-perfil {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+}
+
+.perfil-avatar {
+  display: flex;
+  justify-content: center;
+}
+
+.campo-info {
+  font-size: 0.9rem;
+  color: var(--tinta-suave);
+}
