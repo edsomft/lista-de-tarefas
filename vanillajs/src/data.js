@@ -6,9 +6,7 @@ import { salvar, carregar } from "./storage.js";
 const CHAVE_TAREFAS = "kanban:tarefas";
 const CHAVE_TAGS = "kanban:tags";
 
-/* ------------------------------------------------------------------ */
-/* Tabelas fixas (listas de apoio)                                     */
-/* ------------------------------------------------------------------ */
+// Tabelas fixas (listas de apoio)
 
 // As colunas do kanban. O "status" da tarefa é o id da coluna onde ela está.
 export const colunas = [
@@ -50,9 +48,7 @@ export const ordens = [
   { id: "titulo", titulo: "Título (A–Z)" },
 ];
 
-/* ------------------------------------------------------------------ */
-/* Estado da aplicação                                                 */
-/* ------------------------------------------------------------------ */
+// Estado da aplicação
 
 export const filtrosPadrao = {
   busca: "",
@@ -169,9 +165,7 @@ const tarefasIniciais = [
   },
 ];
 
-/* ------------------------------------------------------------------ */
-/* Persistência                                                        */
-/* ------------------------------------------------------------------ */
+// Persistência
 
 function persistir() {
   salvar(CHAVE_TAREFAS, estado.tarefas);
@@ -200,18 +194,14 @@ export function carregarTags() {
   }
 }
 
-/* ------------------------------------------------------------------ */
-/* Buscas simples (find)                                               */
-/* ------------------------------------------------------------------ */
+// Buscas simples (find)
 
 export const buscarTarefa = (id) => estado.tarefas.find((t) => t.id === id);
 export const buscarCategoria = (id) => categorias.find((c) => c.id === id);
 export const buscarTag = (id) => estado.tags.find((t) => t.id === id);
 export const buscarPrioridade = (id) => prioridades.find((p) => p.id === id);
 
-/* ------------------------------------------------------------------ */
-/* CRUD                                                                */
-/* ------------------------------------------------------------------ */
+// CRUD
 
 function gerarId() {
   const maiorId = estado.tarefas.reduce((maior, t) => Math.max(maior, t.id), 0);
@@ -320,9 +310,7 @@ export function statusVizinho(status, direcao) {
   return vizinha ? vizinha.id : null;
 }
 
-/* ------------------------------------------------------------------ */
-/* Busca, filtro e ordenação                                           */
-/* ------------------------------------------------------------------ */
+// Busca, filtro e ordenação
 
 export function existemFiltrosAtivos() {
   const { busca, categoriaId, prioridade, tagId } = estado.filtros;
@@ -366,9 +354,7 @@ export function obterTarefasVisiveis() {
   return ordenar(filtradas, ordem);
 }
 
-/* ------------------------------------------------------------------ */
-/* Contadores e estatísticas                                           */
-/* ------------------------------------------------------------------ */
+// Contadores e estatísticas
 
 // { "a-fazer": 4, "em-andamento": 2, "concluida": 3 }
 export function contarPorStatus(tarefas) {

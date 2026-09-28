@@ -44,9 +44,7 @@ import {
   atualizarPreviewAvatar,
 } from "./dom.js";
 
-/* ==================================================================== */
-/* Tela de login / criar conta                                          */
-/* ==================================================================== */
+// Tela de login / criar conta
 
 // renderizarApp é passado pelo main.js: é a função que decide, de novo,
 // se mostra o quadro ou a tela de login (chamada depois de qualquer
@@ -104,9 +102,7 @@ export function registrarEventosAuth(renderizarApp) {
   });
 }
 
-/* ==================================================================== */
-/* Cabeçalho: abrir perfil e sair                                       */
-/* ==================================================================== */
+// Cabeçalho: abrir perfil e sair
 
 // Guarda a foto escolhida (ainda não salva) enquanto o modal de perfil está aberto.
 let avatarSelecionadoDataUrl = null;
@@ -167,9 +163,7 @@ function registrarEventosPerfil(renderizarApp) {
   });
 }
 
-/* ==================================================================== */
-/* Busca e filtros                                                      */
-/* ==================================================================== */
+// Busca e filtros
 
 function registrarEventosFiltros() {
   // Busca: dispara a cada letra digitada.
@@ -199,9 +193,7 @@ function registrarEventosFiltros() {
   });
 }
 
-/* ==================================================================== */
-/* Botões dos cartões (delegação de eventos)                            */
-/* ==================================================================== */
+// Botões dos cartões (delegação de eventos)
 
 // Os cartões são recriados a cada renderização. Por isso o listener fica no
 // #quadro (que nunca é recriado) e descobrimos qual botão foi clicado com closest().
@@ -242,9 +234,7 @@ function registrarEventosQuadro() {
   });
 }
 
-/* ==================================================================== */
-/* Modal de tarefa: salvar (criar ou editar) e fechar                   */
-/* ==================================================================== */
+// Modal de tarefa: salvar (criar ou editar) e fechar
 
 function registrarEventosModal() {
   const modal = document.querySelector("#modal-tarefa");
@@ -285,9 +275,7 @@ function registrarEventosModal() {
   registrarEventosTags();
 }
 
-/* ------------------------------------------------------------------ */
-/* Tags: marcar e criar direto pelo menu suspenso                      */
-/* ------------------------------------------------------------------ */
+// Tags: marcar e criar direto pelo menu suspenso
 
 function registrarEventosTags() {
   const listaTags = document.querySelector("#lista-tags-menu");
@@ -343,9 +331,7 @@ function registrarEventosTags() {
   });
 }
 
-/* ==================================================================== */
-/* Arrastar e soltar entre colunas                                      */
-/* ==================================================================== */
+// Arrastar e soltar entre colunas
 
 function registrarEventosArrastar() {
   const quadro = document.querySelector("#quadro");
@@ -393,9 +379,7 @@ function registrarEventosArrastar() {
   });
 }
 
-/* ==================================================================== */
-/* Ponto de entrada: registra tudo que pertence ao quadro (usuário logado) */
-/* ==================================================================== */
+// Ponto de entrada: registra tudo que pertence ao quadro (usuário logado)
 
 export function registrarEventosApp(renderizarApp) {
   registrarEventosFiltros();

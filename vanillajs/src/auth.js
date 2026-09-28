@@ -38,9 +38,7 @@ export function usuarioLogado() {
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/* ------------------------------------------------------------------ */
-/* Registro                                                             */
-/* ------------------------------------------------------------------ */
+// Registro
 
 // Devolve um objeto { campo: mensagem } só com os campos que têm problema.
 // Objeto vazio {} significa que passou na validação.
@@ -84,9 +82,7 @@ export function registrarUsuario({ nome, email, senha }) {
   return usuario;
 }
 
-/* ------------------------------------------------------------------ */
-/* Login                                                                */
-/* ------------------------------------------------------------------ */
+// Login
 
 export function validarLogin({ email, senha }) {
   const erros = {};
@@ -118,9 +114,7 @@ export function logout() {
   remover(CHAVE_SESSAO);
 }
 
-/* ------------------------------------------------------------------ */
-/* Perfil                                                               */
-/* ------------------------------------------------------------------ */
+// Perfil
 
 // campos pode ter { nome } e/ou { avatar } (avatar é uma data URL em base64).
 export function atualizarPerfil(id, campos) {
