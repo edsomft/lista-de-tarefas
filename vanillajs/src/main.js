@@ -19,7 +19,8 @@ function renderizarApp() {
   }
 }
 
-// Única função assíncrona do app: busca os avisos no JSON Server (api.js)
+// Busca os avisos no JSON Server (api.js) quando o quadro aparece
+// (a criação de avisos, que também é assíncrona, fica no eventos.js)
 // e manda o resultado para o dom.js desenhar. try/catch cobre a rede fora
 // do ar; response.ok (dentro de api.js) cobre erro HTTP.
 async function carregarAvisos() {
