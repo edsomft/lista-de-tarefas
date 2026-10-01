@@ -22,9 +22,7 @@ import {
   calcularProgresso,
 } from "./data.js";
 
-/* ------------------------------------------------------------------ */
-/* Helpers para criar elementos                                        */
-/* ------------------------------------------------------------------ */
+// Helpers para criar elementos
 
 // criarElemento("button", { classe: "botao", texto: "Salvar", dataset: { acao: "x" } }, [filhos])
 // - classe   -> className
@@ -57,30 +55,20 @@ function criarSelect(atributos, opcoes) {
   return select;
 }
 
-// <label> simples: texto + controle (sem espaço para mensagem de erro).
-function criarCampo(rotulo, controle) {
-  return criarElemento("label", { classe: "campo" }, [
-    criarElemento("span", { texto: rotulo }),
-    controle,
-  ]);
+// <label> com texto + controle. Se nomeCampo for passado, reserva um <span>
+// para a mensagem de erro daquele campo (ver mostrarErrosCampos).
+function criarCampo(rotulo, controle, nomeCampo) {
+  const filhos = [criarElemento("span", { texto: rotulo }), controle];
+  if (nomeCampo) {
+    filhos.push(criarElemento("span", { classe: "erro-campo", role: "alert", dataset: { erro: nomeCampo } }));
+  }
+  return criarElemento("label", { classe: "campo" }, filhos);
 }
 
-// <label> com um <span> reservado para a mensagem de erro daquele campo
-// (fica vazio até algum submit inválido preenchê-lo, ver mostrarErrosCampos).
-function criarCampoComErro(rotulo, controle, nomeCampo) {
-  return criarElemento("label", { classe: "campo" }, [
-    criarElemento("span", { texto: rotulo }),
-    controle,
-    criarElemento("span", { classe: "erro-campo", role: "alert", dataset: { erro: nomeCampo } }),
-  ]);
-}
-
-/* ------------------------------------------------------------------ */
-/* Validação por campo (usada no formulário de tarefa e nos de conta)  */
-/* ------------------------------------------------------------------ */
+// Validação por campo (usada no formulário de tarefa e nos de conta)
 
 // erros = { nomeDoCampo: "mensagem" }. Cada campo precisa de um elemento
-// [data-erro="nomeDoCampo"] dentro do form (criado por criarCampoComErro).
+// [data-erro="nomeDoCampo"] dentro do form (criado por criarCampo com 3º argumento).
 export function mostrarErrosCampos(form, erros) {
   limparErrosCampos(form);
   Object.entries(erros).forEach(([campo, mensagem]) => {
@@ -96,9 +84,7 @@ export function limparErrosCampos(form) {
   [...form.elements].forEach((elemento) => elemento.classList?.remove("invalido"));
 }
 
-/* ------------------------------------------------------------------ */
-/* Avatar: foto (se houver) ou um círculo com a inicial do nome         */
-/* ------------------------------------------------------------------ */
+// Avatar: foto (se houver) ou um círculo com a inicial do nome
 
 function criarAvatar(usuario, classe) {
   if (usuario.avatar) {
@@ -108,19 +94,17 @@ function criarAvatar(usuario, classe) {
   return criarElemento("div", { classe: `${classe} avatar-letra`, texto: inicial });
 }
 
-/* ==================================================================== */
-/* TELA DE AUTENTICAÇÃO (login / criar conta)                           */
-/* ==================================================================== */
+// TELA DE AUTENTICAÇÃO (login / criar conta)
 
 function criarFormularioLogin() {
   return criarElemento("form", { id: "form-login", classe: "form-auth", novalidate: "" }, [
     criarElemento("h2", { texto: "Entrar" }),
-    criarCampoComErro(
+    criarCampo(
       "E-mail",
       criarElemento("input", { type: "email", name: "email", autocomplete: "username" }),
       "email"
     ),
-    criarCampoComErro(
+    criarCampo(
       "Senha",
       criarElemento("input", { type: "password", name: "senha", autocomplete: "current-password" }),
       "senha"
@@ -145,22 +129,22 @@ function criarFormularioRegistro() {
     { id: "form-registro", classe: "form-auth", hidden: "", novalidate: "" },
     [
       criarElemento("h2", { texto: "Criar conta" }),
-      criarCampoComErro(
+      criarCampo(
         "Nome",
         criarElemento("input", { type: "text", name: "nome", autocomplete: "name" }),
         "nome"
       ),
-      criarCampoComErro(
+      criarCampo(
         "E-mail",
         criarElemento("input", { type: "email", name: "email", autocomplete: "username" }),
         "email"
       ),
-      criarCampoComErro(
+      criarCampo(
         "Senha",
         criarElemento("input", { type: "password", name: "senha", autocomplete: "new-password" }),
         "senha"
       ),
-      criarCampoComErro(
+      criarCampo(
         "Confirmar senha",
         criarElemento("input", {
           type: "password",
@@ -210,9 +194,7 @@ export function alternarParaLogin() {
   document.querySelector("#form-login").hidden = false;
 }
 
-/* ==================================================================== */
-/* CABEÇALHO (com informações do usuário logado)                        */
-/* ==================================================================== */
+// CABEÇALHO (com informações do usuário logado)
 
 function criarCabecalho(usuario) {
   return criarElemento("header", { classe: "topo" }, [
@@ -251,9 +233,7 @@ function criarCabecalho(usuario) {
   ]);
 }
 
-/* ==================================================================== */
-/* MODAL DE PERFIL                                                       */
-/* ==================================================================== */
+// MODAL DE PERFIL
 
 function criarModalPerfil(usuario) {
   const formulario = criarElemento("form", { id: "form-perfil", novalidate: "" }, [
@@ -265,7 +245,7 @@ function criarModalPerfil(usuario) {
       "Foto de perfil",
       criarElemento("input", { type: "file", id: "input-avatar", name: "avatar", accept: "image/*" })
     ),
-    criarCampoComErro(
+    criarCampo(
       "Nome",
       criarElemento("input", { type: "text", name: "nome", maxlength: "40" }),
       "nome"
@@ -317,9 +297,7 @@ export function atualizarPreviewAvatar(dataUrl) {
     );
 }
 
-/* ==================================================================== */
-/* QUADRO KANBAN                                                         */
-/* ==================================================================== */
+// QUADRO KANBAN
 
 function criarBarraFerramentas() {
   const busca = criarElemento("input", {
@@ -364,6 +342,30 @@ function criarResumoCategorias() {
     criarElemento("p", { classe: "resumo-rotulo", texto: "Tarefas por categoria" }),
     criarElemento("ul", { id: "resumo-categorias", classe: "resumo-lista" }),
   ]);
+}
+
+// Painel de avisos: nasce mostrando "carregando" e é preenchido pelo main.js
+// depois do fetch ao JSON Server (ver api.js). Fica sempre visível.
+function criarPainelAvisos() {
+  return criarElemento("section", { id: "painel-avisos", classe: "avisos" }, [
+    criarElemento("p", { classe: "resumo-rotulo", texto: "Avisos do quadro" }),
+    criarElemento("ul", { id: "lista-avisos", classe: "avisos-lista" }, [
+      criarElemento("li", { classe: "avisos-msg", texto: "Carregando avisos..." }),
+    ]),
+  ]);
+}
+
+// Chamada pelo main.js com o resultado do fetch: { avisos } ou { erro }.
+export function renderizarAvisos({ avisos, erro } = {}) {
+  const lista = document.querySelector("#lista-avisos");
+  if (!lista) return;
+  if (erro) {
+    lista.replaceChildren(criarElemento("li", { classe: "avisos-msg avisos-erro", texto: erro }));
+  } else if (!avisos || avisos.length === 0) {
+    lista.replaceChildren(criarElemento("li", { classe: "avisos-msg", texto: "Nenhum aviso no momento." }));
+  } else {
+    lista.replaceChildren(...avisos.map((a) => criarElemento("li", { texto: a.mensagem })));
+  }
 }
 
 function criarQuadro() {
@@ -420,7 +422,7 @@ function criarModal() {
   const formulario = criarElemento("form", { id: "form-tarefa", novalidate: "" }, [
     criarElemento("h2", { id: "modal-titulo" }),
     criarElemento("input", { type: "hidden", name: "tarefaId" }),
-    criarCampoComErro(
+    criarCampo(
       "Título",
       criarElemento("input", { type: "text", name: "titulo", maxlength: "60", autocomplete: "off" }),
       "titulo"
@@ -453,7 +455,7 @@ function criarModal() {
       ),
     ]),
     grupoTags,
-    criarCampoComErro(
+    criarCampo(
       "Imagem (link)",
       criarElemento("input", {
         type: "url",
@@ -483,9 +485,7 @@ function criarModal() {
   ]);
 }
 
-/* ------------------------------------------------------------------ */
-/* Cartões e colunas                                                    */
-/* ------------------------------------------------------------------ */
+// Cartões e colunas
 
 function criarCartao(tarefa) {
   const categoria = buscarCategoria(tarefa.categoriaId);
@@ -584,9 +584,7 @@ export function renderizarColunas() {
   });
 }
 
-/* ------------------------------------------------------------------ */
-/* Contadores e progresso                                              */
-/* ------------------------------------------------------------------ */
+// Contadores e progresso
 
 function renderizarProgresso() {
   const { total, concluidas, percentual } = calcularProgresso();
@@ -624,9 +622,7 @@ export function sincronizarFiltros() {
   document.querySelector("#filtro-ordem").value = f.ordem;
 }
 
-/* ------------------------------------------------------------------ */
-/* Tags (filtro e menu suspenso do formulário)                         */
-/* ------------------------------------------------------------------ */
+// Tags (filtro e menu suspenso do formulário)
 
 // Refaz as opções do filtro de tags (chamada no início e quando nasce uma tag nova).
 export function renderizarFiltroTags() {
@@ -687,9 +683,7 @@ export function mostrarMensagemTag(mensagem) {
   document.querySelector("#msg-tag").textContent = mensagem;
 }
 
-/* ------------------------------------------------------------------ */
-/* Modal de tarefa (criar / editar)                                     */
-/* ------------------------------------------------------------------ */
+// Modal de tarefa (criar / editar)
 
 export function abrirModal(tarefa = null) {
   const form = document.querySelector("#form-tarefa");
@@ -743,9 +737,7 @@ export function lerFormulario() {
   };
 }
 
-/* ==================================================================== */
-/* Ponto de entrada do quadro (chamado só quando há um usuário logado)  */
-/* ==================================================================== */
+// Ponto de entrada do quadro (chamado só quando há um usuário logado)
 
 export function montarQuadro(usuario) {
   carregarTarefas();
@@ -757,6 +749,7 @@ export function montarQuadro(usuario) {
       criarCabecalho(usuario),
       criarBarraFerramentas(),
       criarResumoCategorias(),
+      criarPainelAvisos(),
       criarQuadro(),
       criarModal(),
       criarModalPerfil(usuario)

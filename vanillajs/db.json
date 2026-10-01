@@ -1,0 +1,7 @@
+{
+  "avisos": [
+    { "id": 1, "mensagem": "Mova os cartões para 'Concluída' assim que terminar uma tarefa." },
+    { "id": 2, "mensagem": "Use os filtros para achar tarefas por categoria, prioridade ou tag." },
+    { "id": 3, "mensagem": "Checkpoint 4: integração com fetch + async/await concluída." }
+  ]
+}
