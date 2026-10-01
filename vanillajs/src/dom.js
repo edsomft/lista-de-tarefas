@@ -346,13 +346,43 @@ function criarResumoCategorias() {
 
 // Painel de avisos: nasce mostrando "carregando" e é preenchido pelo main.js
 // depois do fetch ao JSON Server (ver api.js). Fica sempre visível.
+// Embaixo da lista há um formulário que publica um aviso novo (POST).
 function criarPainelAvisos() {
   return criarElemento("section", { id: "painel-avisos", classe: "avisos" }, [
     criarElemento("p", { classe: "resumo-rotulo", texto: "Avisos do quadro" }),
     criarElemento("ul", { id: "lista-avisos", classe: "avisos-lista" }, [
       criarElemento("li", { classe: "avisos-msg", texto: "Carregando avisos..." }),
     ]),
+    criarElemento("form", { id: "form-aviso", classe: "form-aviso", novalidate: "" }, [
+      criarCampo(
+        "Novo aviso",
+        criarElemento("input", {
+          type: "text",
+          name: "mensagem",
+          maxlength: "140",
+          autocomplete: "off",
+          placeholder: "Escreva um aviso para o quadro",
+        }),
+        "mensagem"
+      ),
+      criarElemento("button", {
+        id: "btn-publicar-aviso",
+        classe: "botao botao-primario",
+        type: "submit",
+        texto: "Publicar",
+      }),
+    ]),
   ]);
+}
+
+// Acrescenta um aviso recém-criado no fim da lista, sem buscar tudo de novo.
+// Se a lista ainda mostra uma mensagem de estado ("Nenhum aviso...", erro),
+// ela é removida antes.
+export function adicionarAviso(aviso) {
+  const lista = document.querySelector("#lista-avisos");
+  if (!lista) return;
+  lista.querySelectorAll(".avisos-msg").forEach((item) => item.remove());
+  lista.append(criarItemAviso(aviso));
 }
 
 // Chamada pelo main.js com o resultado do fetch: { avisos } ou { erro }.
@@ -364,8 +394,37 @@ export function renderizarAvisos({ avisos, erro } = {}) {
   } else if (!avisos || avisos.length === 0) {
     lista.replaceChildren(criarElemento("li", { classe: "avisos-msg", texto: "Nenhum aviso no momento." }));
   } else {
-    lista.replaceChildren(...avisos.map((a) => criarElemento("li", { texto: a.mensagem })));
+    lista.replaceChildren(...avisos.map(criarItemAviso));
   }
+}
+
+// Um <li> de aviso: o texto + o botão "Excluir". O id do aviso fica em
+// data-id (no <li> e no botão) para o eventos.js saber qual apagar.
+function criarItemAviso(aviso) {
+  return criarElemento("li", { classe: "aviso-item", dataset: { id: aviso.id } }, [
+    criarElemento("span", { texto: aviso.mensagem }),
+    criarElemento("button", {
+      classe: "botao-pequeno perigo btn-excluir-aviso",
+      type: "button",
+      texto: "Excluir",
+      dataset: { id: aviso.id },
+      "aria-label": `Excluir o aviso: ${aviso.mensagem}`,
+    }),
+  ]);
+}
+
+// Tira da tela o aviso apagado. Se era o último, volta a mensagem de lista vazia.
+export function removerAvisoDaLista(id) {
+  const lista = document.querySelector("#lista-avisos");
+  if (!lista) return;
+  lista.querySelector(`.aviso-item[data-id="${id}"]`)?.remove();
+  if (!lista.querySelector(".aviso-item")) renderizarAvisos({ avisos: [] });
+}
+
+// Mostra (ou limpa, com texto vazio) uma mensagem de erro embaixo do formulário de avisos.
+export function mostrarErroAvisos(texto = "") {
+  const aviso = document.querySelector('#form-aviso [data-erro="mensagem"]');
+  if (aviso) aviso.textContent = texto;
 }
 
 function criarQuadro() {

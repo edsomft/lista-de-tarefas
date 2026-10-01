@@ -42,7 +42,11 @@ import {
   abrirModalPerfil,
   fecharModalPerfil,
   atualizarPreviewAvatar,
+  adicionarAviso,
+  removerAvisoDaLista,
+  mostrarErroAvisos,
 } from "./dom.js";
+import { criarAviso, removerAviso } from "./api.js";
 
 // Tela de login / criar conta
 
@@ -381,8 +385,67 @@ function registrarEventosArrastar() {
 
 // Ponto de entrada: registra tudo que pertence ao quadro (usuário logado)
 
+// Formulário "Novo aviso": valida, manda o POST ao JSON Server (api.js) e,
+// se der certo, desenha o aviso na lista. É async porque espera a resposta.
+function registrarEventosAvisos() {
+  const form = document.querySelector("#form-aviso");
+  const botao = document.querySelector("#btn-publicar-aviso");
+
+  form.addEventListener("submit", async (evento) => {
+    evento.preventDefault();
+
+    const mensagem = form.elements.mensagem.value.trim();
+    if (mensagem.length < 3) {
+      mostrarErrosCampos(form, { mensagem: "Escreva pelo menos 3 caracteres." });
+      return;
+    }
+    limparErrosCampos(form);
+
+    // Desabilita o botão durante o envio para não criar o mesmo aviso duas vezes.
+    botao.disabled = true;
+    try {
+      const novoAviso = await criarAviso(mensagem);
+      adicionarAviso(novoAviso);
+      form.reset();
+    } catch (erro) {
+      console.error(erro);
+      mostrarErrosCampos(form, {
+        mensagem: "Não foi possível publicar o aviso (o JSON Server está rodando?).",
+      });
+    } finally {
+      botao.disabled = false;
+    }
+  });
+}
+
+// Excluir aviso: um único listener no <ul> (delegação de eventos). Como os
+// <li> são criados e recriados dinamicamente, escutamos o clique na lista e
+// descobrimos qual botão "Excluir" foi clicado com closest().
+function registrarEventosExcluirAviso() {
+  document.querySelector("#lista-avisos").addEventListener("click", async (evento) => {
+    const botao = evento.target.closest(".btn-excluir-aviso");
+    if (!botao) return;
+
+    const mensagem = botao.closest(".aviso-item").firstElementChild.textContent;
+    if (!confirm(`Excluir o aviso "${mensagem}"?`)) return;
+
+    botao.disabled = true;
+    try {
+      await removerAviso(botao.dataset.id);
+      removerAvisoDaLista(botao.dataset.id);
+      mostrarErroAvisos("");
+    } catch (erro) {
+      console.error(erro);
+      mostrarErroAvisos("Não foi possível excluir o aviso (o JSON Server está rodando?).");
+      botao.disabled = false;
+    }
+  });
+}
+
 export function registrarEventosApp(renderizarApp) {
   registrarEventosFiltros();
+  registrarEventosAvisos();
+  registrarEventosExcluirAviso();
   registrarEventosQuadro();
   registrarEventosModal();
   registrarEventosArrastar();

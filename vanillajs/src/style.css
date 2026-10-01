@@ -246,6 +246,34 @@ p {
   color: var(--perigo);
 }
 
+.btn-excluir-aviso {
+  margin-left: 8px;
+  padding: 1px 8px;
+}
+
+.form-aviso {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.form-aviso .campo {
+  flex: 1;
+  min-width: 220px;
+}
+
+/* Alinha o botão com a caixa de texto (o campo tem o rótulo acima dela). */
+.form-aviso .botao {
+  margin-top: 21px;
+}
+
+.botao:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .chip-resumo {
   display: inline-flex;
   align-items: center;
